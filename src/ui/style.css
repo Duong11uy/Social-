@@ -290,6 +290,19 @@ body {
   border-left: 1px solid var(--zalo-border);
 }
 
+/* Keep tieuthuyetmang active off-screen when inactive so background audio/TTS continues playing */
+.webview-pane[data-service-id="tieuthuyetmang"]:not(.active):not(.split-secondary) {
+  display: flex !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 .webview-pane webview {
   display: inline-flex;
   flex: 1;

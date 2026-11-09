@@ -395,32 +395,49 @@ const mainWorldScript = `
 
     setupTikTokPcWheelNavigation();
 
-    // Prevent background tabs (especially TikTok) from auto-resuming video/audio
-    // when the main Social Hub window is minimized/hidden and restored
-    window.addEventListener(
-      'play',
-      (e) => {
-        if (window.__SOCIALHUB_TAB_HIDDEN__ && e.target && typeof e.target.pause === 'function') {
-          try {
-            e.target.pause();
-          } catch {}
-        }
-      },
-      true
-    );
+    const isTieuthuyetmang =
+      typeof location !== 'undefined' && location.hostname.includes('tieuthuyetmang.com');
 
-    const blockWhenTabHidden = (e) => {
-      if (window.__SOCIALHUB_TAB_HIDDEN__) {
-        e.stopImmediatePropagation();
-        document.querySelectorAll('video, audio').forEach((m) => {
-          try {
-            m.pause();
-          } catch {}
+    if (isTieuthuyetmang) {
+      // Keep background audio/TTS playing continuously on tieuthuyetmang.com
+      try {
+        Object.defineProperty(document, 'hidden', {
+          get: () => false,
+          configurable: true,
         });
-      }
-    };
-    document.addEventListener('visibilitychange', blockWhenTabHidden, true);
-    window.addEventListener('focus', blockWhenTabHidden, true);
+        Object.defineProperty(document, 'visibilityState', {
+          get: () => 'visible',
+          configurable: true,
+        });
+      } catch {}
+    } else {
+      // Prevent background tabs (especially TikTok, Facebook, Instagram) from auto-resuming video/audio
+      // when the main Social Hub window is minimized/hidden and restored
+      window.addEventListener(
+        'play',
+        (e) => {
+          if (window.__SOCIALHUB_TAB_HIDDEN__ && e.target && typeof e.target.pause === 'function') {
+            try {
+              e.target.pause();
+            } catch {}
+          }
+        },
+        true
+      );
+
+      const blockWhenTabHidden = (e) => {
+        if (window.__SOCIALHUB_TAB_HIDDEN__) {
+          e.stopImmediatePropagation();
+          document.querySelectorAll('video, audio').forEach((m) => {
+            try {
+              m.pause();
+            } catch {}
+          });
+        }
+      };
+      document.addEventListener('visibilitychange', blockWhenTabHidden, true);
+      window.addEventListener('focus', blockWhenTabHidden, true);
+    }
 
     // Keep shared links inside Threads / Social Hub instead of opening external redirect tabs
     document.addEventListener(

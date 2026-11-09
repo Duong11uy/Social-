@@ -340,6 +340,7 @@ function ensureWebviewPane(service) {
   pane.dataset.serviceId = service.id;
 
   const wv = document.createElement('webview');
+  wv.dataset.serviceId = service.id;
   wv.setAttribute('src', service.url);
   wv.setAttribute('partition', service.partition);
   wv.setAttribute('allowpopups', 'true');
@@ -474,6 +475,7 @@ function ensureWebviewPane(service) {
   });
 
   wv.addEventListener('media-started-playing', () => {
+    if (service.id === 'tieuthuyetmang') return;
     const visible = isServiceVisible(service.id);
     if (!visible || document.hidden || state.dndMuted) {
       applyWebviewMediaGate(wv, visible);
@@ -583,6 +585,25 @@ function destroyWebviewPane(serviceId) {
 
 function applyWebviewMediaGate(wv, isVisible) {
   if (!wv || wv.dataset.domReady !== '1') return;
+  const pane = wv.closest ? wv.closest('.webview-pane') : null;
+  const serviceId = (pane && pane.dataset.serviceId) || wv.dataset.serviceId;
+
+  // Allow tieuthuyetmang (Tiểu Thuyết Mạng) to keep playing stories in background even when window/tab is hidden
+  if (serviceId === 'tieuthuyetmang') {
+    if (typeof wv.setAudioMuted === 'function') {
+      try {
+        wv.setAudioMuted(false);
+      } catch {}
+    }
+    if (typeof wv.executeJavaScript === 'function') {
+      try {
+        const p = wv.executeJavaScript('window.__SOCIALHUB_TAB_HIDDEN__ = false;');
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch {}
+    }
+    return;
+  }
+
   const shouldHideMedia = Boolean(!isVisible || state.windowHidden || document.hidden);
   if (typeof wv.setAudioMuted === 'function') {
     try {
