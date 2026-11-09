@@ -83,6 +83,12 @@ const SERVICE_ICONS = {
     <path d="M9.5 16c.6-1.6 2-2.5 3.5-2.5s2.9.9 3.5 2.5"/>
   </svg>`,
 
+  // Book / Novel reader icon (Tiểu Thuyết Mạng)
+  book: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+  </svg>`,
+
   // Default custom app icon
   custom: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>

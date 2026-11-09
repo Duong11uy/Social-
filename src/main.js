@@ -37,12 +37,15 @@ const {
 
 const CHROME_USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36';
+const GOOGLE_AUTH_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0';
 
 // Enable Chromium GPU hardware acceleration, zero-copy video decoding & smooth scrolling
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('enable-smooth-scrolling');
 app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,BackForwardCache');
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 
 app.setName('Social Hub');
 if (process.platform === 'win32') {
@@ -205,14 +208,30 @@ function configurePartitionSession(partitionName) {
 
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     const h = details.requestHeaders;
-    h['User-Agent'] = CHROME_USER_AGENT;
-    const chUa = '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"';
-    delete h['Sec-CH-UA'];
-    delete h['Sec-CH-UA-Mobile'];
-    delete h['Sec-CH-UA-Platform'];
-    h['sec-ch-ua'] = chUa;
-    h['sec-ch-ua-mobile'] = '?0';
-    h['sec-ch-ua-platform'] = '"Windows"';
+    const url = (details.url || '').toLowerCase();
+    const isGoogleAuth =
+      url.includes('accounts.google.com') ||
+      url.includes('accounts.youtube.com') ||
+      url.includes('oauth2.googleapis.com');
+
+    if (isGoogleAuth) {
+      h['User-Agent'] = GOOGLE_AUTH_USER_AGENT;
+      delete h['Sec-CH-UA'];
+      delete h['Sec-CH-UA-Mobile'];
+      delete h['Sec-CH-UA-Platform'];
+      delete h['sec-ch-ua'];
+      delete h['sec-ch-ua-mobile'];
+      delete h['sec-ch-ua-platform'];
+    } else {
+      h['User-Agent'] = CHROME_USER_AGENT;
+      const chUa = '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"';
+      delete h['Sec-CH-UA'];
+      delete h['Sec-CH-UA-Mobile'];
+      delete h['Sec-CH-UA-Platform'];
+      h['sec-ch-ua'] = chUa;
+      h['sec-ch-ua-mobile'] = '?0';
+      h['sec-ch-ua-platform'] = '"Windows"';
+    }
     callback({ requestHeaders: h });
   });
   const allowed = new Set([
@@ -583,7 +602,13 @@ function attachPopupHandler(contents) {
   contents.on('did-create-window', (childWindow, details) => {
     childWindow.setMenuBarVisibility(false);
     if (childWindow.webContents) {
-      childWindow.webContents.setUserAgent(CHROME_USER_AGENT);
+      const isGoogleAuth =
+        details &&
+        details.url &&
+        /accounts\.google\.com|oauth2\.googleapis\.com/i.test(details.url);
+      childWindow.webContents.setUserAgent(
+        isGoogleAuth ? GOOGLE_AUTH_USER_AGENT : CHROME_USER_AGENT
+      );
       attachPopupHandler(childWindow.webContents);
       const rawUrl = (details && details.url) || '';
       const unwrapped = unwrapRedirectUrl(rawUrl);

@@ -73,6 +73,14 @@ const DEFAULT_SERVICES = [
     color: '#fe2c55',
     partition: 'persist:tiktok',
   },
+  {
+    id: 'tieuthuyetmang',
+    name: 'Tiểu Thuyết Mạng',
+    url: 'https://tieuthuyetmang.com/',
+    iconKey: 'book',
+    color: '#ff5722',
+    partition: 'persist:tieuthuyetmang',
+  },
 ];
 
 const SERVICE_PRESETS = [
@@ -174,6 +182,13 @@ const SERVICE_PRESETS = [
     iconKey: 'gmail',
     color: '#ea4335',
   },
+  {
+    key: 'tieuthuyetmang',
+    name: 'Tiểu Thuyết Mạng',
+    url: 'https://tieuthuyetmang.com/',
+    iconKey: 'book',
+    color: '#ff5722',
+  },
 ];
 
 /**
@@ -255,6 +270,7 @@ function detectIconKey(url, fallbackKey) {
   if (u.includes('mail.google.com')) return 'gmail';
   if (u.includes('google.com')) return 'google';
   if (u.includes('tiktok.com')) return 'tiktok';
+  if (u.includes('tieuthuyetmang.com')) return 'book';
   if (u.includes('teams.microsoft')) return 'teams';
   return 'custom';
 }
@@ -688,13 +704,13 @@ function totalUnreadCount(unreadMap = {}) {
 }
 
 const GITHUB_UPDATE_API_URL =
-  'https://api.github.com/repos/Thangnd265/social-hub-updates/contents/version.json';
+  'https://api.github.com/repos/Duong11uy/Social-/contents/version.json';
 const GITHUB_UPDATE_MANIFEST_URL =
-  'https://raw.githubusercontent.com/Thangnd265/social-hub-updates/main/version.json';
+  'https://raw.githubusercontent.com/Duong11uy/Social-/main/version.json';
 const GITHUB_UPDATE_CDN_URL =
-  'https://cdn.jsdelivr.net/gh/Thangnd265/social-hub-updates@main/version.json';
+  'https://cdn.jsdelivr.net/gh/Duong11uy/Social-@main/version.json';
 const GITHUB_UPDATE_ZIP_URL =
-  'https://raw.githubusercontent.com/Thangnd265/social-hub-updates/main/app-update.zip';
+  'https://raw.githubusercontent.com/Duong11uy/Social-/main/app-update.zip';
 
 function parseSemverParts(versionStr = '') {
   return String(versionStr || '0.0.0')

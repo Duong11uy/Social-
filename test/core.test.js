@@ -22,11 +22,11 @@ const {
   isUpdateAvailable,
 } = require('../src/core.js');
 
-test('DEFAULT_SERVICES provides Zalo, Messenger, Telegram, Facebook, Instagram, Threads, X, Google, and TikTok with isolated persist partitions', () => {
-  assert.equal(DEFAULT_SERVICES.length, 9);
+test('DEFAULT_SERVICES provides Zalo, Messenger, Telegram, Facebook, Instagram, Threads, X, Google, TikTok, and Tieuthuyetmang with isolated persist partitions', () => {
+  assert.equal(DEFAULT_SERVICES.length, 10);
   assert.deepEqual(
     DEFAULT_SERVICES.map((s) => s.id),
-    ['zalo', 'messenger', 'telegram', 'facebook', 'instagram', 'threads', 'x', 'google', 'tiktok']
+    ['zalo', 'messenger', 'telegram', 'facebook', 'instagram', 'threads', 'x', 'google', 'tiktok', 'tieuthuyetmang']
   );
   for (const s of DEFAULT_SERVICES) {
     assert.match(s.partition, /^persist:/);
@@ -263,8 +263,8 @@ test('shouldOpenInAppPopup allows OAuth, login popups, about:blank popups, and n
   );
   // Pasted URL inside Google search box unwraps directly to the destination URL
   assert.equal(
-    unwrapRedirectUrl('https://www.google.com/search?q=https%3A%2F%2Fgithub.com%2FThangnd265&oq=https'),
-    'https://github.com/Thangnd265'
+    unwrapRedirectUrl('https://www.google.com/search?q=https%3A%2F%2Fgithub.com%2FDuong11uy&oq=https'),
+    'https://github.com/Duong11uy'
   );
   assert.equal(
     unwrapRedirectUrl('https://www.google.com/search?q=vnexpress.net%2Ftin-tuc'),
@@ -329,8 +329,8 @@ test('shouldBlockAdRequest blocks ad networks and trackers while preserving core
 });
 
 test('isUpdateAvailable compares semantic versions and build timestamps for GitHub auto-update', () => {
-  assert.match(GITHUB_UPDATE_MANIFEST_URL, /raw\.githubusercontent\.com\/Thangnd265\/social-hub-updates\/main\/version\.json/);
-  assert.match(GITHUB_UPDATE_ZIP_URL, /raw\.githubusercontent\.com\/Thangnd265\/social-hub-updates\/main\/app-update\.zip/);
+  assert.match(GITHUB_UPDATE_MANIFEST_URL, /raw\.githubusercontent\.com\/Duong11uy\/Social-\/main\/version\.json/);
+  assert.match(GITHUB_UPDATE_ZIP_URL, /raw\.githubusercontent\.com\/Duong11uy\/Social-\/main\/app-update\.zip/);
 
   // Newer semver version
   assert.equal(

@@ -2,6 +2,16 @@
 
 const { ipcRenderer, webFrame } = require('electron');
 
+// Mask automation flag safely
+try {
+  if (typeof navigator !== 'undefined' && 'webdriver' in navigator) {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => undefined,
+      configurable: true,
+    });
+  }
+} catch {}
+
 function detectUnreadDetailsFromDom(preferredTitle = '') {
   try {
     const cleanPref = String(preferredTitle || '')
