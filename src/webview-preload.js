@@ -194,6 +194,57 @@ function checkAndSendDomUnread() {
   }
 }
 
+function parseWebviewShortcut(e) {
+  if (!e) return null;
+  const ctrl = Boolean(e.ctrlKey || e.metaKey);
+  const alt = Boolean(e.altKey);
+  const shift = Boolean(e.shiftKey);
+  const key = String(e.key || '');
+  const code = String(e.code || '');
+
+  let digit = -1;
+  if (/^[0-9]$/.test(key)) {
+    digit = parseInt(key, 10);
+  } else if (/^Digit([0-9])$/.test(code)) {
+    digit = parseInt(code.slice(5), 10);
+  } else if (/^Numpad([0-9])$/.test(code)) {
+    digit = parseInt(code.slice(6), 10);
+  }
+
+  if (ctrl && !alt && !shift && digit >= 0 && digit <= 9) {
+    return { type: 'switch-tab-index', index: digit === 0 ? 9 : digit - 1 };
+  }
+  if (ctrl && !alt && key === 'Tab') {
+    return { type: 'cycle-tab', direction: shift ? -1 : 1 };
+  }
+  if (key === 'F5' || (ctrl && !alt && !shift && (key.toLowerCase() === 'r' || code === 'KeyR'))) {
+    return { type: 'reload' };
+  }
+  if (ctrl && !alt && !shift && (key.toLowerCase() === 'n' || code === 'KeyN')) {
+    return { type: 'add-tab' };
+  }
+  if (ctrl && !alt && !shift && (key.toLowerCase() === 'l' || code === 'KeyL')) {
+    return { type: 'toggle-lock' };
+  }
+  if (ctrl && !alt && shift && (key.toLowerCase() === 't' || code === 'KeyT')) {
+    return { type: 'toggle-theme' };
+  }
+  return null;
+}
+
+window.addEventListener(
+  'keydown',
+  (e) => {
+    const action = parseWebviewShortcut(e);
+    if (action) {
+      e.preventDefault();
+      e.stopPropagation();
+      ipcRenderer.sendToHost('webview:shortcut', action);
+    }
+  },
+  true
+);
+
 window.addEventListener('__socialhub_notify__', (event) => {
   const detail = (event && event.detail) || {};
   const domInfo = detectUnreadDetailsFromDom(detail.sender || '');

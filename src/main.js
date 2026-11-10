@@ -633,6 +633,53 @@ app.on('web-contents-created', (_event, contents) => {
         contents.setBackgroundThrottling(false);
       } catch {}
     }
+
+    contents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+
+      const ctrl = Boolean(input.control || input.meta);
+      const alt = Boolean(input.alt);
+      const shift = Boolean(input.shift);
+      const key = String(input.key || '');
+      const code = String(input.code || '');
+
+      let digit = -1;
+      if (/^[0-9]$/.test(key)) {
+        digit = parseInt(key, 10);
+      } else if (/^Digit([0-9])$/.test(code)) {
+        digit = parseInt(code.slice(5), 10);
+      } else if (/^Numpad([0-9])$/.test(code)) {
+        digit = parseInt(code.slice(6), 10);
+      }
+
+      let action = null;
+      if (ctrl && !alt && !shift && digit >= 0 && digit <= 9) {
+        action = { type: 'switch-tab-index', index: digit === 0 ? 9 : digit - 1 };
+      } else if (ctrl && !alt && key === 'Tab') {
+        action = { type: 'cycle-tab', direction: shift ? -1 : 1 };
+      } else if (key === 'F5' || (ctrl && !alt && !shift && (key.toLowerCase() === 'r' || code === 'KeyR'))) {
+        action = { type: 'reload' };
+      } else if (ctrl && !alt && !shift && (key.toLowerCase() === 'n' || code === 'KeyN')) {
+        action = { type: 'add-tab' };
+      } else if (ctrl && !alt && !shift && (key.toLowerCase() === 'l' || code === 'KeyL')) {
+        action = { type: 'toggle-lock' };
+      } else if (ctrl && !alt && shift && (key.toLowerCase() === 't' || code === 'KeyT')) {
+        action = { type: 'toggle-theme' };
+      }
+
+      if (action) {
+        event.preventDefault();
+        mainWindow.webContents.send('shortcut:action', action);
+        try {
+          mainWindow.webContents
+            .executeJavaScript(
+              `if (typeof window.__socialHubShortcut === 'function') window.__socialHubShortcut(${JSON.stringify(action)});`
+            )
+            .catch(() => {});
+        } catch {}
+      }
+    });
   }
 });
 

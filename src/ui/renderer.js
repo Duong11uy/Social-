@@ -162,6 +162,16 @@ function getEnabledServices() {
   return state.services.filter((s) => s.enabled !== false);
 }
 
+function getOrderedRailServiceIds() {
+  if (els.railTop) {
+    const domBtns = Array.from(els.railTop.querySelectorAll('.rail-app-btn[data-service-id]'));
+    if (domBtns.length > 0) {
+      return domBtns.map((btn) => btn.dataset.serviceId).filter(Boolean);
+    }
+  }
+  return getEnabledServices().map((s) => s.id);
+}
+
 function updateTitlebar() {
   const active = getEnabledServices().find((s) => s.id === state.activeServiceId);
   els.titlebarText.textContent = active ? `${active.name} — Social Hub` : 'Social Hub';
@@ -268,7 +278,7 @@ function renderRailButtons() {
       btn.classList.add('split-secondary');
     }
     btn.dataset.serviceId = service.id;
-    const shortcutHint = idx < 9 ? ` (Ctrl+${idx + 1})` : '';
+    const shortcutHint = idx < 9 ? ` (Ctrl+${idx + 1})` : idx === 9 ? ' (Ctrl+0)' : '';
     btn.title = `${service.name}${shortcutHint} • Kéo thả để đổi vị trí`;
     btn.setAttribute('aria-label', service.name);
 
@@ -776,6 +786,9 @@ function ensureWebviewPane(service) {
         state.unreadCounts[service.id] = 0;
         updateBadgeCount(service.id, 0);
       }
+    } else if (event.channel === 'webview:shortcut') {
+      const action = (event.args && event.args[0]) || {};
+      handleGlobalShortcut(action);
     }
   });
 
@@ -1363,40 +1376,116 @@ async function initApp() {
     });
   }
 
-  // Keyboard shortcuts (Ctrl+1..9, Ctrl+Tab, F5/Ctrl+R, Ctrl+N, Ctrl+L, Ctrl+\)
-  window.addEventListener('keydown', (e) => {
-    const visibleServices = getEnabledServices();
-    if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
-      const idx = parseInt(e.key, 10) - 1;
-      if (visibleServices[idx]) {
+  if (typeof window.chatHub.onShortcutAction === 'function') {
+    window.chatHub.onShortcutAction((action) => {
+      handleGlobalShortcut(action);
+    });
+  }
+
+  // Keyboard shortcuts (Ctrl+1..9, Ctrl+0, Ctrl+Tab, F5/Ctrl+R, Ctrl+N, Ctrl+L, Ctrl+\, Ctrl+Shift+T)
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      const action = parseHostShortcut(e);
+      if (action) {
         e.preventDefault();
-        switchService(visibleServices[idx].id);
+        e.stopPropagation();
+        handleGlobalShortcut(action);
+      } else if (e.key === 'Escape') {
+        els.addModal.hidden = true;
+        els.settingsModal.hidden = true;
       }
-    } else if (e.ctrlKey && e.key === 'Tab') {
-      e.preventDefault();
-      const curIdx = visibleServices.findIndex((s) => s.id === state.activeServiceId);
-      const nextIdx = (curIdx + 1) % visibleServices.length;
-      if (visibleServices[nextIdx]) switchService(visibleServices[nextIdx].id);
-    } else if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r')) {
-      e.preventDefault();
-      reloadActiveService();
-    } else if (e.ctrlKey && e.key.toLowerCase() === 'n') {
-      e.preventDefault();
-      els.btnAddApp.click();
-    } else if (e.ctrlKey && e.key.toLowerCase() === 'l') {
-      e.preventDefault();
-      toggleLockOverlay();
-    } else if (e.ctrlKey && e.key === '\\') {
-      e.preventDefault();
-      toggleSplitView();
-    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'T' || e.key === 't')) {
-      e.preventDefault();
-      toggleTheme();
-    } else if (e.key === 'Escape') {
+    },
+    true
+  );
+}
+
+let lastShortcutAt = 0;
+let lastShortcutSig = '';
+
+function parseHostShortcut(e) {
+  if (!e) return null;
+  const ctrl = Boolean(e.ctrlKey || e.metaKey);
+  const alt = Boolean(e.altKey);
+  const shift = Boolean(e.shiftKey);
+  const key = String(e.key || '');
+  const code = String(e.code || '');
+
+  let digit = -1;
+  if (/^[0-9]$/.test(key)) {
+    digit = parseInt(key, 10);
+  } else if (/^Digit([0-9])$/.test(code)) {
+    digit = parseInt(code.slice(5), 10);
+  } else if (/^Numpad([0-9])$/.test(code)) {
+    digit = parseInt(code.slice(6), 10);
+  }
+
+  if (ctrl && !alt && !shift && digit >= 0 && digit <= 9) {
+    return { type: 'switch-tab-index', index: digit === 0 ? 9 : digit - 1 };
+  }
+  if (ctrl && !alt && key === 'Tab') {
+    return { type: 'cycle-tab', direction: shift ? -1 : 1 };
+  }
+  if (key === 'F5' || (ctrl && !alt && !shift && (key.toLowerCase() === 'r' || code === 'KeyR'))) {
+    return { type: 'reload' };
+  }
+  if (ctrl && !alt && !shift && (key.toLowerCase() === 'n' || code === 'KeyN')) {
+    return { type: 'add-tab' };
+  }
+  if (ctrl && !alt && !shift && (key.toLowerCase() === 'l' || code === 'KeyL')) {
+    return { type: 'toggle-lock' };
+  }
+  if (ctrl && !alt && !shift && key === '\\') {
+    return { type: 'toggle-split' };
+  }
+  if (ctrl && !alt && shift && (key.toLowerCase() === 't' || code === 'KeyT')) {
+    return { type: 'toggle-theme' };
+  }
+  return null;
+}
+
+function handleGlobalShortcut(action) {
+  if (!action || !action.type) return;
+  const now = Date.now();
+  const sig = `${action.type}:${action.index ?? ''}:${action.direction ?? ''}`;
+  if (sig === lastShortcutSig && now - lastShortcutAt < 120) {
+    return;
+  }
+  lastShortcutSig = sig;
+  lastShortcutAt = now;
+
+  const orderedIds = getOrderedRailServiceIds();
+  if (action.type === 'switch-tab-index') {
+    const idx = Number(action.index);
+    if (idx >= 0 && idx < orderedIds.length && orderedIds[idx]) {
       els.addModal.hidden = true;
       els.settingsModal.hidden = true;
+      switchService(orderedIds[idx]);
     }
-  });
+  } else if (action.type === 'cycle-tab') {
+    if (orderedIds.length > 0) {
+      const dir = action.direction === -1 ? -1 : 1;
+      const curIdx = orderedIds.indexOf(state.activeServiceId);
+      const nextIdx = (curIdx + dir + orderedIds.length) % orderedIds.length;
+      if (orderedIds[nextIdx]) {
+        els.addModal.hidden = true;
+        els.settingsModal.hidden = true;
+        switchService(orderedIds[nextIdx]);
+      }
+    }
+  } else if (action.type === 'reload') {
+    reloadActiveService();
+  } else if (action.type === 'add-tab') {
+    if (els.btnAddApp) els.btnAddApp.click();
+  } else if (action.type === 'toggle-lock') {
+    toggleLockOverlay();
+  } else if (action.type === 'toggle-split') {
+    toggleSplitView();
+  } else if (action.type === 'toggle-theme') {
+    toggleTheme();
+  }
 }
+
+window.__socialHubShortcut = handleGlobalShortcut;
 
 document.addEventListener('DOMContentLoaded', initApp);

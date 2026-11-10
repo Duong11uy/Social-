@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('chatHub', {
   setAppBadge: (count) => ipcRenderer.send('app:badge', count),
   notify: (payload) => ipcRenderer.send('app:notify', payload),
   onActivateService: (cb) => ipcRenderer.on('service:activate', (_e, serviceId) => cb(serviceId)),
+  onShortcutAction: (cb) => ipcRenderer.on('shortcut:action', (_e, action) => cb(action)),
   getWebviewPreloadUrl: () => webviewPreloadUrl,
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   maximizeWindow: () => ipcRenderer.send('window:maximize'),
