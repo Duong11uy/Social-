@@ -567,7 +567,12 @@ function attachPopupHandler(contents) {
         const bothThreads =
           (currentHost.includes('threads.net') || currentHost.includes('threads.com')) &&
           (targetHost.includes('threads.net') || targetHost.includes('threads.com'));
-        if (bothThreads) {
+        const bothFacebook =
+          (currentHost.includes('facebook.com') || currentHost.includes('fb.com')) &&
+          (targetHost.includes('facebook.com') || targetHost.includes('fb.com'));
+        const bothInstagram =
+          currentHost.includes('instagram.com') && targetHost.includes('instagram.com');
+        if (bothThreads || bothFacebook || bothInstagram) {
           contents.loadURL(targetUrl).catch(() => {});
           return { action: 'deny' };
         }

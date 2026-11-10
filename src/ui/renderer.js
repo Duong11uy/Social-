@@ -459,6 +459,121 @@ function ensureWebviewPane(service) {
     pane.appendChild(toolbar);
   }
 
+  const isSocialNav =
+    ['facebook', 'threads', 'instagram'].includes((service.iconKey || '').toLowerCase()) ||
+    ['facebook', 'threads', 'instagram'].includes((service.id || '').toLowerCase()) ||
+    service.id.startsWith('facebook-') ||
+    service.id.startsWith('threads-') ||
+    service.id.startsWith('instagram-');
+
+  if (isSocialNav) {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'social-nav-toolbar';
+    toolbar.innerHTML = `
+      <div class="social-nav-group">
+        <button type="button" class="browser-nav-btn social-btn-back" title="Quay lại (Alt+←)" aria-label="Quay lại" disabled>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5"></path>
+            <path d="m12 19-7-7 7-7"></path>
+          </svg>
+        </button>
+        <button type="button" class="browser-nav-btn social-btn-forward" title="Tiếp theo (Alt+→)" aria-label="Tiếp theo" disabled>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"></path>
+            <path d="m12 5 7 7-7 7"></path>
+          </svg>
+        </button>
+        <button type="button" class="browser-nav-btn social-btn-reload" title="Làm mới trang (F5)" aria-label="Làm mới trang">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+          </svg>
+        </button>
+        <button type="button" class="browser-nav-btn social-btn-home" title="Về trang chủ" aria-label="Về trang chủ">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </button>
+      </div>
+      <div class="social-nav-title">
+        <span class="social-nav-badge">${service.name}</span>
+        <span class="social-nav-url" title=""></span>
+      </div>
+    `;
+
+    const btnBack = toolbar.querySelector('.social-btn-back');
+    const btnForward = toolbar.querySelector('.social-btn-forward');
+    const btnReload = toolbar.querySelector('.social-btn-reload');
+    const btnHome = toolbar.querySelector('.social-btn-home');
+    const lblUrl = toolbar.querySelector('.social-nav-url');
+
+    const syncToolbarState = (explicitUrl) => {
+      if (wv.dataset.domReady !== '1') return;
+      try {
+        btnBack.disabled = typeof wv.canGoBack === 'function' ? !wv.canGoBack() : true;
+        btnForward.disabled = typeof wv.canGoForward === 'function' ? !wv.canGoForward() : true;
+        if (lblUrl) {
+          const currentUrl = explicitUrl || (typeof wv.getURL === 'function' ? wv.getURL() : '');
+          if (currentUrl && currentUrl !== 'about:blank') {
+            try {
+              const u = new URL(currentUrl);
+              const pathPart = u.pathname + (u.search ? u.search : '');
+              lblUrl.textContent = pathPart === '/' ? '' : pathPart;
+              lblUrl.title = currentUrl;
+            } catch {
+              lblUrl.textContent = '';
+            }
+          }
+        }
+      } catch {}
+    };
+
+    btnBack.addEventListener('click', () => {
+      try {
+        if (wv.dataset.domReady === '1' && typeof wv.canGoBack === 'function' && wv.canGoBack()) {
+          wv.goBack();
+        }
+      } catch {}
+    });
+
+    btnForward.addEventListener('click', () => {
+      try {
+        if (
+          wv.dataset.domReady === '1' &&
+          typeof wv.canGoForward === 'function' &&
+          wv.canGoForward()
+        ) {
+          wv.goForward();
+        }
+      } catch {}
+    });
+
+    btnReload.addEventListener('click', () => {
+      try {
+        if (typeof wv.reload === 'function') {
+          wv.reload();
+        }
+      } catch {}
+    });
+
+    btnHome.addEventListener('click', () => {
+      try {
+        if (typeof wv.loadURL === 'function') {
+          wv.loadURL(service.url).catch(() => {});
+        } else {
+          wv.setAttribute('src', service.url);
+        }
+      } catch {}
+    });
+
+    wv.addEventListener('dom-ready', () => syncToolbarState());
+    wv.addEventListener('did-navigate', (e) => syncToolbarState(e && e.url));
+    wv.addEventListener('did-navigate-in-page', (e) => syncToolbarState(e && e.url));
+
+    pane.appendChild(toolbar);
+  }
+
   const isServiceVisible = (id) => {
     const isPrimary = id === state.activeServiceId;
     const isSecondary =

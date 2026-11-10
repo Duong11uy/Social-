@@ -439,6 +439,31 @@ const mainWorldScript = `
       window.addEventListener('focus', blockWhenTabHidden, true);
     }
 
+    // Support mouse back/forward buttons (button 3 / 4) and Alt+Left / Alt+Right navigation
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 3) {
+        if (window.history && window.history.length > 1) {
+          window.history.back();
+        }
+      } else if (e.button === 4) {
+        if (window.history) {
+          window.history.forward();
+        }
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey && e.key === 'ArrowLeft') {
+        if (window.history && window.history.length > 1) {
+          window.history.back();
+        }
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        if (window.history) {
+          window.history.forward();
+        }
+      }
+    });
+
     // Keep shared links inside Threads / Social Hub instead of opening external redirect tabs
     document.addEventListener(
       'click',
