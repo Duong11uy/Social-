@@ -107,6 +107,7 @@ const state = {
   activeServiceId: null,
   splitSecondaryId: null,
   splitMode: false,
+  theme: 'dark',
   dndMuted: false,
   windowHidden: false,
   locked: false,
@@ -124,10 +125,11 @@ const els = {
   railTop: document.getElementById('app-rail-top'),
   webviewStage: document.getElementById('webview-stage'),
   btnReload: document.getElementById('btn-reload'),
+  btnSplitView: document.getElementById('btn-split-view'),
+  btnThemeToggle: document.getElementById('btn-theme-toggle'),
+  btnSettings: document.getElementById('btn-settings'),
   btnDnd: document.getElementById('btn-dnd'),
   btnAddApp: document.getElementById('btn-add-app'),
-  btnSplitView: document.getElementById('btn-split-view'),
-  btnSettings: document.getElementById('btn-settings'),
   btnLockApp: document.getElementById('btn-lock-app'),
   btnUnlockApp: document.getElementById('btn-unlock-app'),
   btnWinMin: document.getElementById('btn-win-min'),
@@ -357,6 +359,137 @@ function ensureWebviewPane(service) {
   const desktopUa =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36';
   wv.setAttribute('useragent', desktopUa);
+
+  // Dedicated header bar for Cửa sổ 2 (Split Secondary Window)
+  const splitBar = document.createElement('div');
+  splitBar.className = 'split-window-bar';
+  splitBar.innerHTML = `
+    <div class="split-window-title-group">
+      <span class="split-window-badge">Cửa sổ 2</span>
+      <button type="button" class="split-mxh-select-btn" title="Bấm để chọn Mạng Xã Hội khác">
+        <span class="split-mxh-name">${service.name}</span>
+        <svg class="chevron" viewBox="0 0 12 12" width="10" height="10" fill="currentColor">
+          <path d="M2.5 4.5L6 8l3.5-3.5"/>
+        </svg>
+      </button>
+      <div class="split-mxh-dropdown" hidden></div>
+    </div>
+    <div class="split-window-pills"></div>
+    <div class="split-window-actions">
+      <button type="button" class="browser-nav-btn split-btn-reload" title="Làm mới cửa sổ này (F5)" aria-label="Làm mới">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+          <path d="M16 16h5v5"/>
+        </svg>
+      </button>
+      <button type="button" class="browser-nav-btn split-btn-close" title="Đóng cửa sổ thứ 2 (Ctrl+\)" aria-label="Đóng cửa sổ thứ 2">
+        <svg viewBox="0 0 12 12" width="12" height="12" stroke="currentColor" stroke-width="1.8">
+          <line x1="2" y1="2" x2="10" y2="10"></line>
+          <line x1="10" y1="2" x2="2" y2="10"></line>
+        </svg>
+      </button>
+    </div>
+  `;
+
+  const btnSelect = splitBar.querySelector('.split-mxh-select-btn');
+  const dropdown = splitBar.querySelector('.split-mxh-dropdown');
+  const pillsContainer = splitBar.querySelector('.split-window-pills');
+  const btnSplitReload = splitBar.querySelector('.split-btn-reload');
+  const btnSplitClose = splitBar.querySelector('.split-btn-close');
+
+  const updateSplitPills = () => {
+    const list = getEnabledServices();
+    pillsContainer.innerHTML = list
+      .filter((s) => s.id !== service.id && s.id !== state.activeServiceId)
+      .slice(0, 4)
+      .map(
+        (s) => `
+        <button type="button" class="split-pill-btn" data-target-id="${s.id}" title="Mở ${s.name} ở cửa sổ này">
+          <span>${s.name}</span>
+        </button>
+      `
+      )
+      .join('');
+    pillsContainer.querySelectorAll('.split-pill-btn').forEach((p) => {
+      p.addEventListener('click', () => {
+        const tid = p.dataset.targetId;
+        if (tid) setSplitSecondary(tid);
+      });
+    });
+  };
+
+  const populateDropdown = () => {
+    const list = getEnabledServices();
+    dropdown.innerHTML = `
+      <div class="split-mxh-dropdown-title">Chọn Mạng Xã Hội cho Cửa sổ 2:</div>
+      ${list
+        .map(
+          (s) => `
+        <button type="button" class="split-mxh-item ${s.id === service.id ? 'selected' : ''}" data-target-id="${s.id}">
+          ${SERVICE_ICONS[s.iconKey] || SERVICE_ICONS.custom}
+          <span>${s.name}</span>
+        </button>
+      `
+        )
+        .join('')}
+      <button type="button" class="split-mxh-add-btn" id="btn-split-add-service">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>+ Thêm mạng xã hội mới...</span>
+      </button>
+    `;
+    dropdown.querySelectorAll('.split-mxh-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const tid = item.dataset.targetId;
+        dropdown.hidden = true;
+        if (tid) setSplitSecondary(tid);
+      });
+    });
+    const btnAddService = dropdown.querySelector('#btn-split-add-service');
+    if (btnAddService) {
+      btnAddService.addEventListener('click', () => {
+        dropdown.hidden = true;
+        els.formAddService.reset();
+        els.addServiceError.hidden = true;
+        els.addModal.hidden = false;
+        els.inputServiceName.focus();
+      });
+    }
+  };
+
+  btnSelect.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = dropdown.hidden;
+    if (isHidden) {
+      populateDropdown();
+      dropdown.hidden = false;
+    } else {
+      dropdown.hidden = true;
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!splitBar.contains(e.target)) {
+      dropdown.hidden = true;
+    }
+  });
+
+  btnSplitReload.addEventListener('click', () => {
+    try {
+      if (typeof wv.reload === 'function') wv.reload();
+    } catch {}
+  });
+
+  btnSplitClose.addEventListener('click', () => {
+    toggleSplitView();
+  });
+
+  updateSplitPills();
+  pane.appendChild(splitBar);
 
   if (service.id === 'google' || service.iconKey === 'google') {
     const toolbar = document.createElement('div');
@@ -811,7 +944,22 @@ function toggleSplitView() {
     const other = getEnabledServices().find((s) => s.id !== state.activeServiceId);
     state.splitSecondaryId = other ? other.id : null;
   }
-  els.btnSplitView.classList.toggle('active-toggle', state.splitMode);
+  if (els.btnSplitView) {
+    els.btnSplitView.classList.toggle('active-toggle', state.splitMode);
+  }
+  renderRailButtons();
+  syncVisibleWebviews();
+}
+
+function setSplitSecondary(serviceId) {
+  if (!serviceId) return;
+  state.splitSecondaryId = serviceId;
+  if (!state.splitMode) {
+    state.splitMode = true;
+    if (els.btnSplitView) {
+      els.btnSplitView.classList.add('active-toggle');
+    }
+  }
   renderRailButtons();
   syncVisibleWebviews();
 }
@@ -824,6 +972,31 @@ function reloadActiveService() {
       wv.reload();
     } catch {}
   }
+  const svg = els.btnReload ? els.btnReload.querySelector('svg') : null;
+  if (svg) {
+    svg.classList.remove('is-spinning');
+    void svg.offsetWidth;
+    svg.classList.add('is-spinning');
+    setTimeout(() => svg.classList.remove('is-spinning'), 600);
+  }
+}
+
+function applyTheme(theme) {
+  state.theme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  try {
+    localStorage.setItem('social_hub_theme', state.theme);
+  } catch {}
+  if (els.btnThemeToggle) {
+    els.btnThemeToggle.title =
+      state.theme === 'light'
+        ? 'Chuyển sang Chế độ Tối (Ctrl+Shift+T)'
+        : 'Chuyển sang Chế độ Sáng (Ctrl+Shift+T)';
+  }
+}
+
+function toggleTheme() {
+  applyTheme(state.theme === 'light' ? 'dark' : 'light');
 }
 
 function toggleDndMute() {
@@ -1061,12 +1234,17 @@ async function initApp() {
   els.btnWinMax.addEventListener('click', () => window.chatHub.maximizeWindow());
   els.btnWinClose.addEventListener('click', () => window.chatHub.closeWindow());
 
+  // Theme initialization
+  const savedTheme = localStorage.getItem('social_hub_theme') || 'dark';
+  applyTheme(savedTheme);
+
   // Rail utilities
-  els.btnReload.addEventListener('click', reloadActiveService);
-  els.btnDnd.addEventListener('click', toggleDndMute);
-  els.btnSplitView.addEventListener('click', toggleSplitView);
-  els.btnLockApp.addEventListener('click', () => toggleLockOverlay());
-  els.btnUnlockApp.addEventListener('click', () => toggleLockOverlay(false));
+  if (els.btnReload) els.btnReload.addEventListener('click', reloadActiveService);
+  if (els.btnSplitView) els.btnSplitView.addEventListener('click', toggleSplitView);
+  if (els.btnThemeToggle) els.btnThemeToggle.addEventListener('click', toggleTheme);
+  if (els.btnDnd) els.btnDnd.addEventListener('click', toggleDndMute);
+  if (els.btnLockApp) els.btnLockApp.addEventListener('click', () => toggleLockOverlay());
+  if (els.btnUnlockApp) els.btnUnlockApp.addEventListener('click', () => toggleLockOverlay(false));
 
   // Add modal
   els.btnAddApp.addEventListener('click', () => {
@@ -1149,6 +1327,9 @@ async function initApp() {
     } else if (e.ctrlKey && e.key === '\\') {
       e.preventDefault();
       toggleSplitView();
+    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'T' || e.key === 't')) {
+      e.preventDefault();
+      toggleTheme();
     } else if (e.key === 'Escape') {
       els.addModal.hidden = true;
       els.settingsModal.hidden = true;

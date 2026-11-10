@@ -32,6 +32,7 @@ test('Social Hub HTML shell contains custom titlebar, 64px left rail, toast cont
   assert.match(html, /id="btn-dnd"/);
   assert.match(html, /id="btn-add-app"/);
   assert.match(html, /id="btn-split-view"/);
+  assert.match(html, /id="btn-theme-toggle"/);
   assert.match(html, /id="btn-settings"/);
 
   // Webview container & overlays
