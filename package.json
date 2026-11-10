@@ -1,6 +1,6 @@
 ﻿{
     "name":  "social-hub",
-    "version":  "1.1.5",
+    "version":  "1.1.6",
     "private":  true,
     "description":  "Social Hub Desktop App (Zalo, Messenger, Telegram, Facebook, Instagram, Threads, X)",
     "main":  "src/main.js",
@@ -14,5 +14,5 @@
     "devDependencies":  {
                             "electron":  "^34.0.0"
                         },
-    "build":  1794276328377
+    "build":  1794276597771
 }
