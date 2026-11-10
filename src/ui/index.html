@@ -58,13 +58,12 @@
           </svg>
         </button>
 
-        <!-- 3: Thêm 1 cửa sổ để chọn MXH (Chia đôi màn hình Ctrl+\) -->
-        <button id="btn-split-view" class="rail-util-btn" title="Thêm 1 cửa sổ để chọn MXH (Ctrl+\)" aria-label="Thêm 1 cửa sổ để chọn MXH">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="16" rx="2.5"/>
-            <line x1="12" y1="4" x2="12" y2="20"/>
-            <line x1="16.5" y1="9.5" x2="16.5" y2="14.5"/>
-            <line x1="14" y1="12" x2="19" y2="12"/>
+        <!-- 3: Thêm 1 tab / tài khoản MXH mới (Zalo 2, Facebook 2... Ctrl+N) -->
+        <button id="btn-add-app" class="rail-util-btn" title="Thêm 1 tab / tài khoản MXH mới (Zalo 2, Facebook 2...) (Ctrl+N)" aria-label="Thêm tab mới">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
           </svg>
         </button>
 
@@ -88,8 +87,8 @@
         </button>
 
         <!-- Hidden helper handles for backward compatibility -->
+        <button id="btn-split-view" class="rail-util-btn" style="display:none;" aria-hidden="true" tabindex="-1"></button>
         <button id="btn-dnd" class="rail-util-btn" style="display:none;" aria-hidden="true" tabindex="-1"></button>
-        <button id="btn-add-app" class="rail-util-btn" style="display:none;" aria-hidden="true" tabindex="-1"></button>
       </div>
     </aside>
 
@@ -101,11 +100,11 @@
   <div id="add-service-modal" class="modal-backdrop" hidden>
     <div class="modal-dialog" role="dialog" aria-labelledby="add-modal-title">
       <div class="modal-header">
-        <h2 id="add-modal-title">Thêm ứng dụng chat hoặc tài khoản mới</h2>
+        <h2 id="add-modal-title">Thêm tab / tài khoản mạng xã hội mới</h2>
         <button id="btn-close-add-modal" class="modal-close-btn" aria-label="Đóng">✕</button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">Chọn nhanh nền tảng bên dưới (mỗi mục tạo 1 phiên đăng nhập độc lập, có thể đăng nhập nhiều tài khoản Zalo/Messenger song song):</p>
+        <p class="modal-desc">Chọn nhanh nền tảng bên dưới để thêm tab mới ngay lập tức (mỗi tab đăng nhập tài khoản Zalo 2, Facebook 2... song song độc lập), hoặc nhập URL bất kỳ:</p>
         <div id="preset-grid" class="preset-grid"></div>
         <form id="form-add-service" class="service-form">
           <div class="form-row">

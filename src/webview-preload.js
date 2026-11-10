@@ -131,6 +131,69 @@ function detectUnreadDetailsFromDom(preferredTitle = '') {
   return { group: '', sender: '', body: '' };
 }
 
+function detectUnreadCountFromDom() {
+  try {
+    const host = (location.hostname || '').toLowerCase();
+
+    // 1. Zalo Web unread counters and badge dots
+    if (host.includes('zalo.me')) {
+      const unreadItems = document.querySelectorAll(
+        '.conv-item.--unread, .msg-item.--unread, .conv-item.unread, .msg-item.unread'
+      );
+      if (unreadItems.length > 0) {
+        let total = 0;
+        unreadItems.forEach((item) => {
+          const badge = item.querySelector('.badge-count, .unread-count, [class*="badge"]');
+          const val = badge ? parseInt(badge.textContent.trim(), 10) : 0;
+          total += val > 0 ? val : 1;
+        });
+        return Math.max(total, unreadItems.length);
+      }
+      const tabBadge = document.querySelector(
+        '.tab-red-dot, .leftbar-tab-badge, .nav__tabs__item [class*="badge"], [class*="unread-red-dot"], .badge-chat'
+      );
+      if (tabBadge) {
+        const num = parseInt(tabBadge.textContent.trim(), 10);
+        return num > 0 ? num : 1;
+      }
+    }
+
+    // 2. Telegram Web A / K
+    if (host.includes('telegram.org')) {
+      const tgItems = document.querySelectorAll('.ListItem.unread, .chatlist-chat.is-unread');
+      if (tgItems.length > 0) {
+        let total = 0;
+        tgItems.forEach((item) => {
+          const badge = item.querySelector('.badge, .unread');
+          const val = badge ? parseInt(badge.textContent.trim(), 10) : 0;
+          total += val > 0 ? val : 1;
+        });
+        return Math.max(total, tgItems.length);
+      }
+    }
+
+    // 3. Messenger / Facebook / Instagram
+    if (host.includes('messenger.com') || host.includes('facebook.com') || host.includes('instagram.com')) {
+      const fbUnread = document.querySelectorAll(
+        '[aria-label*="chưa đọc" i], [aria-label*="unread" i]'
+      );
+      if (fbUnread.length > 0) {
+        return fbUnread.length;
+      }
+    }
+  } catch {}
+  return 0;
+}
+
+let lastReportedDomCount = -1;
+function checkAndSendDomUnread() {
+  const count = detectUnreadCountFromDom();
+  if (count !== lastReportedDomCount) {
+    lastReportedDomCount = count;
+    ipcRenderer.sendToHost('webview:unread-count', { count });
+  }
+}
+
 window.addEventListener('__socialhub_notify__', (event) => {
   const detail = (event && event.detail) || {};
   const domInfo = detectUnreadDetailsFromDom(detail.sender || '');
@@ -142,9 +205,10 @@ window.addEventListener('__socialhub_notify__', (event) => {
     group: String(rawGroup).trim(),
     body: String(rawBody).trim(),
   });
+  setTimeout(checkAndSendDomUnread, 400);
 });
 
-// Observe title changes to also report any unread sender/group found in DOM
+// Observe title and DOM changes to also report unread counts and senders
 window.addEventListener('DOMContentLoaded', () => {
   try {
     const titleEl = document.querySelector('title');
@@ -154,8 +218,25 @@ window.addEventListener('DOMContentLoaded', () => {
         if (domInfo.sender || domInfo.group) {
           ipcRenderer.sendToHost('webview:dom-sender', domInfo);
         }
+        checkAndSendDomUnread();
       });
       obs.observe(titleEl, { childList: true, characterData: true, subtree: true });
+    }
+  } catch {}
+
+  // Periodic heartbeat checks for background unread messages
+  setTimeout(checkAndSendDomUnread, 1500);
+  setTimeout(checkAndSendDomUnread, 4000);
+  setInterval(checkAndSendDomUnread, 3500);
+
+  try {
+    let domTimer = null;
+    const bodyObs = new MutationObserver(() => {
+      if (domTimer) clearTimeout(domTimer);
+      domTimer = setTimeout(checkAndSendDomUnread, 500);
+    });
+    if (document.body) {
+      bodyObs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'aria-label'] });
     }
   } catch {}
 });

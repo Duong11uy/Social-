@@ -749,11 +749,33 @@ function ensureWebviewPane(service) {
           body: payload.body || '',
         };
       }
+      // Increment unread count and show red badge when this tab is not actively viewed
+      const isCurrentActiveTab =
+        state.activeServiceId === service.id && !state.windowHidden && document.hasFocus();
+      if (!isCurrentActiveTab) {
+        const nextCount = (state.unreadCounts[service.id] || 0) + 1;
+        state.unreadCounts[service.id] = nextCount;
+        updateBadgeCount(service.id, nextCount);
+      }
       triggerServiceNotification(service, {
         sender: payload.sender || payload.title || '',
         group: payload.group || '',
         body: payload.body || '',
       });
+    } else if (event.channel === 'webview:unread-count') {
+      const payload = (event.args && event.args[0]) || {};
+      const count = Number(payload.count) || 0;
+      const isCurrentActiveTab =
+        state.activeServiceId === service.id && !state.windowHidden && document.hasFocus();
+      if (count > 0) {
+        if (!isCurrentActiveTab) {
+          state.unreadCounts[service.id] = Math.max(state.unreadCounts[service.id] || 0, count);
+          updateBadgeCount(service.id, state.unreadCounts[service.id]);
+        }
+      } else if (count === 0 && isCurrentActiveTab) {
+        state.unreadCounts[service.id] = 0;
+        updateBadgeCount(service.id, 0);
+      }
     }
   });
 
@@ -927,6 +949,8 @@ function switchService(serviceId) {
     state.splitSecondaryId = state.activeServiceId;
   }
   state.activeServiceId = serviceId;
+  state.unreadCounts[serviceId] = 0;
+  updateBadgeCount(serviceId, 0);
   updateTitlebar();
   renderRailButtons();
   syncVisibleWebviews();
@@ -1010,16 +1034,30 @@ function renderPresets() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'preset-btn';
+    btn.title = `Bấm để thêm ngay tab ${preset.name}`;
     btn.innerHTML = `
       ${SERVICE_ICONS[preset.iconKey] || SERVICE_ICONS.custom}
-      <span>${preset.name}</span>
+      <span class="preset-name">${preset.name}</span>
+      <span class="preset-badge">+ Thêm ngay</span>
     `;
-    btn.addEventListener('click', () => {
-      els.inputServiceName.value = preset.name;
-      els.inputServiceUrl.value = preset.url;
-      els.inputServiceIcon.value = preset.iconKey;
-      els.inputServiceColor.value = preset.color || '#0068ff';
-      els.addServiceError.hidden = true;
+    btn.addEventListener('click', async () => {
+      try {
+        const payload = {
+          name: preset.name,
+          url: preset.url,
+          iconKey: preset.iconKey,
+          color: preset.color || '#0068ff',
+        };
+        const updated = await window.chatHub.addService(payload);
+        state.services = updated;
+        els.addModal.hidden = true;
+        renderRailButtons();
+        const newest = state.services[state.services.length - 1];
+        if (newest) switchService(newest.id);
+      } catch (err) {
+        els.addServiceError.textContent = err.message || 'Không thể thêm ứng dụng';
+        els.addServiceError.hidden = false;
+      }
     });
     els.presetGrid.appendChild(btn);
   });
@@ -1029,6 +1067,7 @@ function renderSettingsModalList() {
   els.settingsServiceList.innerHTML = '';
   state.services.forEach((service) => {
     const isEnabled = service.enabled !== false;
+    const isDeletable = state.services.length > 1;
     const card = document.createElement('div');
     card.className = `settings-service-card${isEnabled ? '' : ' is-disabled'}`;
     card.innerHTML = `
@@ -1052,6 +1091,7 @@ function renderSettingsModalList() {
       </div>
       <div class="card-actions">
         <button type="button" class="btn-card-action btn-clear-session" data-id="${service.id}">Đăng xuất / Cache</button>
+        ${isDeletable ? `<button type="button" class="btn-card-action btn-delete-service" data-id="${service.id}" style="color: #ef4444;" title="Xóa tab này khỏi thanh bên">Xóa tab</button>` : ''}
       </div>
     `;
 
@@ -1081,6 +1121,30 @@ function renderSettingsModalList() {
       const wv = pane ? pane.querySelector('webview') : null;
       if (wv && typeof wv.reload === 'function') wv.reload();
     });
+
+    const deleteBtn = card.querySelector('.btn-delete-service');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        try {
+          const updated = await window.chatHub.removeService(service.id);
+          state.services = updated;
+          destroyWebviewPane(service.id);
+          const enabledList = getEnabledServices();
+          if (!enabledList.some((s) => s.id === state.activeServiceId)) {
+            state.activeServiceId = enabledList[0]?.id || null;
+          }
+          if (state.splitSecondaryId && !enabledList.some((s) => s.id === state.splitSecondaryId)) {
+            state.splitSecondaryId = enabledList.find((s) => s.id !== state.activeServiceId)?.id || null;
+          }
+          updateTitlebar();
+          renderRailButtons();
+          syncVisibleWebviews();
+          renderSettingsModalList();
+        } catch (err) {
+          alert(err.message || 'Không thể xóa ứng dụng này');
+        }
+      });
+    }
 
     els.settingsServiceList.appendChild(card);
   });
@@ -1281,11 +1345,15 @@ async function initApp() {
   if (els.btnTestNotify) {
     els.btnTestNotify.addEventListener('click', () => {
       const active = getEnabledServices().find((s) => s.id === state.activeServiceId) || state.services[0];
-      triggerServiceNotification(
-        active,
-        { group: 'Nhóm Công Việc', sender: 'Nguyễn Văn A' },
-        true
-      );
+      if (active) {
+        state.unreadCounts[active.id] = (state.unreadCounts[active.id] || 0) + 1;
+        updateBadgeCount(active.id, state.unreadCounts[active.id]);
+        triggerServiceNotification(
+          active,
+          { group: 'Nhóm Công Việc', sender: 'Nguyễn Văn A', body: 'Tin nhắn thử nghiệm thông báo' },
+          true
+        );
+      }
     });
   }
 
