@@ -1342,14 +1342,7 @@ app.on('will-quit', () => {
   app.whenReady().then(() => {
   createWindow();
   ensureSystemTray();
-  if (!isSmokeTest) {
-    setTimeout(() => {
-      checkForAppUpdate({ silent: true }).catch(() => {});
-    }, 3500);
-    setInterval(() => {
-      checkForAppUpdate({ silent: true }).catch(() => {});
-    }, 30 * 60 * 1000);
-  }
+  // Only check and apply updates when the user explicitly clicks "Kiểm tra cập nhật" in Settings
   try {
     const cfg = loadConfig();
     if (cfg.autoStart) {
