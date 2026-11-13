@@ -40,6 +40,11 @@ test('Social Hub HTML shell contains custom titlebar, 64px left rail, toast cont
   assert.match(html, /id="add-service-modal"/);
   assert.match(html, /id="settings-modal"/);
   assert.match(html, /id="lock-overlay"/);
+  assert.match(html, /id="brightness-overlay"/);
+  assert.match(html, /id="brightness-popover"/);
+  assert.match(html, /id="brightness-slider"[^>]*min="0"[^>]*max="100"/);
+  assert.match(html, /id="brightness-value"/);
+  assert.match(html, /id="btn-brightness-reset"/);
 
   // App is named Social Hub (not Zalo Hub) and has notification UI
   assert.match(html, /<title>Social Hub<\/title>/);
@@ -67,7 +72,10 @@ test('style.css implements Dark Mode visual tokens (#17191c rail, #2b2f36 active
   assert.match(css, /64px/);
   assert.match(css, /48px/);
   assert.match(css, /tabular-nums/);
+  assert.match(css, /\.brightness-overlay/);
+  assert.match(css, /\.brightness-popover/);
   assert.doesNotMatch(css, /mobile-viewport/);
+  assert.doesNotMatch(css, /\[data-theme="light"\]/);
 });
 
 test('renderer.js exists and includes service switching, lazy webview mounting, unread badge handling, notifications, and SVG icons', () => {
@@ -112,6 +120,10 @@ test('renderer.js exists and includes service switching, lazy webview mounting, 
   assert.match(js, /browser-url-input/);
   assert.match(js, /goBack/);
   assert.match(js, /goForward/);
+  assert.match(js, /applyBrightness/);
+  assert.match(js, /toggleBrightnessPopover/);
+  assert.match(js, /social_hub_brightness/);
+  assert.doesNotMatch(js, /applyTheme/);
 });
 
 test('Electron main.js, preload.js, and webview-preload.js include GPU acceleration, background throttling, and TikTok PC wheel scroll', () => {

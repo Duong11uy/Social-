@@ -101,7 +101,7 @@ const state = {
   activeServiceId: null,
   splitSecondaryId: null,
   splitMode: false,
-  theme: 'dark',
+  brightness: 100,
   dndMuted: false,
   windowHidden: false,
   locked: false,
@@ -121,6 +121,11 @@ const els = {
   btnReload: document.getElementById('btn-reload'),
   btnSplitView: document.getElementById('btn-split-view'),
   btnThemeToggle: document.getElementById('btn-theme-toggle'),
+  brightnessOverlay: document.getElementById('brightness-overlay'),
+  brightnessPopover: document.getElementById('brightness-popover'),
+  brightnessSlider: document.getElementById('brightness-slider'),
+  brightnessValue: document.getElementById('brightness-value'),
+  btnBrightnessReset: document.getElementById('btn-brightness-reset'),
   btnSettings: document.getElementById('btn-settings'),
   btnDnd: document.getElementById('btn-dnd'),
   btnAddApp: document.getElementById('btn-add-app'),
@@ -1012,22 +1017,49 @@ function reloadActiveService() {
   }
 }
 
-function applyTheme(theme) {
-  state.theme = theme === 'light' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', state.theme);
-  try {
-    localStorage.setItem('social_hub_theme', state.theme);
-  } catch {}
-  if (els.btnThemeToggle) {
-    els.btnThemeToggle.title =
-      state.theme === 'light'
-        ? 'Chuyển sang Chế độ Tối (Ctrl+Shift+T)'
-        : 'Chuyển sang Chế độ Sáng (Ctrl+Shift+T)';
-  }
+const MAX_DIM_OPACITY = 0.92;
+
+function clampBrightness(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 100;
+  return Math.max(0, Math.min(100, Math.round(num)));
 }
 
-function toggleTheme() {
-  applyTheme(state.theme === 'light' ? 'dark' : 'light');
+function syncBrightnessButtonState() {
+  if (!els.btnThemeToggle) return;
+  const isOpen = Boolean(els.brightnessPopover && !els.brightnessPopover.hidden);
+  els.btnThemeToggle.setAttribute('aria-expanded', String(isOpen));
+  els.btnThemeToggle.classList.toggle('active-toggle', isOpen || state.brightness < 100);
+  els.btnThemeToggle.title = `Độ sáng: ${state.brightness}% (Ctrl+Shift+T)`;
+}
+
+function applyBrightness(level) {
+  const clamped = clampBrightness(level);
+  state.brightness = clamped;
+  const dimOpacity = ((100 - clamped) / 100) * MAX_DIM_OPACITY;
+  if (els.brightnessOverlay) {
+    els.brightnessOverlay.style.opacity = dimOpacity.toFixed(3);
+  }
+  if (els.brightnessSlider) {
+    els.brightnessSlider.value = String(clamped);
+  }
+  if (els.brightnessValue) {
+    els.brightnessValue.textContent = `${clamped}%`;
+  }
+  try {
+    localStorage.setItem('social_hub_brightness', String(clamped));
+  } catch {}
+  syncBrightnessButtonState();
+}
+
+function toggleBrightnessPopover(forceOpen) {
+  if (!els.brightnessPopover) return;
+  const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : els.brightnessPopover.hidden;
+  els.brightnessPopover.hidden = !shouldOpen;
+  syncBrightnessButtonState();
+  if (shouldOpen && els.brightnessSlider) {
+    els.brightnessSlider.focus();
+  }
 }
 
 function toggleDndMute() {
@@ -1305,14 +1337,44 @@ async function initApp() {
   els.btnWinMax.addEventListener('click', () => window.chatHub.maximizeWindow());
   els.btnWinClose.addEventListener('click', () => window.chatHub.closeWindow());
 
-  // Theme initialization
-  const savedTheme = localStorage.getItem('social_hub_theme') || 'dark';
-  applyTheme(savedTheme);
+  // Brightness initialization (0% - 100%, applies to shell and all webview tabs)
+  const savedBrightness = localStorage.getItem('social_hub_brightness');
+  applyBrightness(savedBrightness === null ? 100 : savedBrightness);
 
   // Rail utilities
   if (els.btnReload) els.btnReload.addEventListener('click', reloadActiveService);
   if (els.btnSplitView) els.btnSplitView.addEventListener('click', toggleSplitView);
-  if (els.btnThemeToggle) els.btnThemeToggle.addEventListener('click', toggleTheme);
+  if (els.btnThemeToggle) {
+    els.btnThemeToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBrightnessPopover();
+    });
+  }
+  if (els.brightnessSlider) {
+    els.brightnessSlider.addEventListener('input', () => {
+      applyBrightness(els.brightnessSlider.value);
+    });
+  }
+  if (els.btnBrightnessReset) {
+    els.btnBrightnessReset.addEventListener('click', () => {
+      applyBrightness(100);
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (
+      els.brightnessPopover &&
+      !els.brightnessPopover.hidden &&
+      !els.brightnessPopover.contains(e.target) &&
+      (!els.btnThemeToggle || !els.btnThemeToggle.contains(e.target))
+    ) {
+      toggleBrightnessPopover(false);
+    }
+  });
+  window.addEventListener('blur', () => {
+    if (els.brightnessPopover && !els.brightnessPopover.hidden) {
+      toggleBrightnessPopover(false);
+    }
+  });
   if (els.btnDnd) els.btnDnd.addEventListener('click', toggleDndMute);
   if (els.btnLockApp) els.btnLockApp.addEventListener('click', () => toggleLockOverlay());
   if (els.btnUnlockApp) els.btnUnlockApp.addEventListener('click', () => toggleLockOverlay(false));
@@ -1394,6 +1456,7 @@ async function initApp() {
       } else if (e.key === 'Escape') {
         els.addModal.hidden = true;
         els.settingsModal.hidden = true;
+        toggleBrightnessPopover(false);
       }
     },
     true
@@ -1482,7 +1545,7 @@ function handleGlobalShortcut(action) {
   } else if (action.type === 'toggle-split') {
     toggleSplitView();
   } else if (action.type === 'toggle-theme') {
-    toggleTheme();
+    toggleBrightnessPopover();
   }
 }
 

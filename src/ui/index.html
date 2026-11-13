@@ -67,14 +67,11 @@
           </svg>
         </button>
 
-        <!-- 2: Chế độ sáng tối (Chuyển đổi Light / Dark Mode) -->
-        <button id="btn-theme-toggle" class="rail-util-btn" title="Chuyển chế độ Sáng / Tối (Ctrl+Shift+T)" aria-label="Chuyển chế độ Sáng / Tối">
-          <svg class="theme-icon-dark" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <!-- 2: Điều chỉnh độ sáng (0% - 100%) -->
+        <button id="btn-theme-toggle" class="rail-util-btn" title="Điều chỉnh độ sáng (0% - 100%) (Ctrl+Shift+T)" aria-label="Điều chỉnh độ sáng" aria-expanded="false" aria-controls="brightness-popover">
+          <svg class="brightness-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="4"/>
             <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-          </svg>
-          <svg class="theme-icon-light" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
 
@@ -183,6 +180,30 @@
           <div id="settings-service-list" class="settings-service-grid"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- App-wide Brightness Dimming Overlay (covers shell & all webview tabs) -->
+  <div id="brightness-overlay" class="brightness-overlay" aria-hidden="true"></div>
+
+  <!-- Brightness Slider Popover (0% - 100%) -->
+  <div id="brightness-popover" class="brightness-popover" role="dialog" aria-label="Điều chỉnh độ sáng" hidden>
+    <div class="brightness-popover-header">
+      <span class="brightness-popover-title">Độ sáng ứng dụng</span>
+      <span id="brightness-value" class="brightness-popover-value">100%</span>
+    </div>
+    <div class="brightness-slider-row">
+      <svg class="brightness-dim-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+      </svg>
+      <input id="brightness-slider" type="range" min="0" max="100" step="1" value="100" aria-label="Độ sáng từ 0 đến 100 phần trăm" />
+      <svg class="brightness-bright-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </svg>
+    </div>
+    <div class="brightness-popover-footer">
+      <button type="button" id="btn-brightness-reset" class="btn-secondary btn-sm">Mặc định 100%</button>
     </div>
   </div>
 
