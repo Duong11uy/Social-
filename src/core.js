@@ -213,6 +213,14 @@ function parseUnreadCount(title) {
     return Math.min(parseInt(trailingAppBadge[1], 10), 99);
   }
 
+  // 2b. Telegram Web A / chat notification titles: "1 new message", "3 unread messages", "Telegram — 2 unread messages"
+  const unreadWordsMatch = trimmed.match(
+    /^(?:Telegram(?:\s+Web)?\s*(?:—|–|-|\|)\s*)?(\d+)\+?\s+(?:new|unread)\s+messages?\b/i
+  );
+  if (unreadWordsMatch) {
+    return Math.min(parseInt(unreadWordsMatch[1], 10), 99);
+  }
+
   // 3. Bullet dot notification indicator: "• Messenger"
   if (/^[•●]\s+/.test(trimmed)) {
     return 1;

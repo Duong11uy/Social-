@@ -12,6 +12,33 @@ try {
   }
 } catch {}
 
+function getTelegramUnreadRows() {
+  const candidates = Array.from(
+    document.querySelectorAll(
+      '.ListItem.Chat, .ListItem.chat-item-clickable, .ListItem.unread, .chatlist-chat'
+    )
+  );
+  const unmuted = [];
+  for (const row of candidates) {
+    if (
+      row.classList.contains('muted') ||
+      row.classList.contains('is-muted') ||
+      row.querySelector('.icon-muted, .Badge.muted, .unread.muted, .badge.is-muted')
+    ) {
+      continue;
+    }
+    const badge = row.querySelector(
+      '.Badge.unread:not(.muted), .ChatBadge:not(.muted), .badge:not(.is-muted), .unread:not(.muted):not(.is-muted)'
+    );
+    const hasUnreadClass =
+      row.classList.contains('unread') || row.classList.contains('is-unread');
+    if (badge || hasUnreadClass) {
+      unmuted.push({ row, badge });
+    }
+  }
+  return unmuted;
+}
+
 function detectUnreadDetailsFromDom(preferredTitle = '') {
   try {
     const cleanPref = String(preferredTitle || '')
@@ -66,19 +93,20 @@ function detectUnreadDetailsFromDom(preferredTitle = '') {
       }
     }
 
-    // 2. Telegram Web A / K unread chat row
-    const tgRow = document.querySelector('.ListItem.unread, .chatlist-chat.is-unread');
+    // 2. Telegram Web A / K unmuted unread chat row
+    const tgEntry = getTelegramUnreadRows()[0];
+    const tgRow = tgEntry ? tgEntry.row : null;
     if (tgRow) {
-      const titleNode = tgRow.querySelector('.title, .peer-title');
+      const titleNode = tgRow.querySelector('.fullName, .title h3, .title, .peer-title');
       const convTitle = titleNode && titleNode.textContent ? titleNode.textContent.trim() : '';
       const senderNode = tgRow.querySelector(
-        '.subtitle .sender-name, .dialog-subtitle-span-sender, .last-message .sender-name'
+        '.subtitle .sender-name, .last-message .sender-name, .dialog-subtitle-span-sender'
       );
       const explicitSender =
         senderNode && senderNode.textContent
           ? senderNode.textContent.replace(/:\s*$/, '').trim()
           : '';
-      const subNode = tgRow.querySelector('.subtitle, .dialog-subtitle');
+      const subNode = tgRow.querySelector('.subtitle, .last-message, .dialog-subtitle');
       const previewText = subNode && subNode.textContent ? subNode.textContent.trim() : '';
       if (convTitle) {
         if (explicitSender && explicitSender.toLowerCase() !== convTitle.toLowerCase()) {
@@ -158,13 +186,12 @@ function detectUnreadCountFromDom() {
       }
     }
 
-    // 2. Telegram Web A / K
+    // 2. Telegram Web A / K (unmuted unread chats)
     if (host.includes('telegram.org')) {
-      const tgItems = document.querySelectorAll('.ListItem.unread, .chatlist-chat.is-unread');
+      const tgItems = getTelegramUnreadRows();
       if (tgItems.length > 0) {
         let total = 0;
-        tgItems.forEach((item) => {
-          const badge = item.querySelector('.badge, .unread');
+        tgItems.forEach(({ badge }) => {
           const val = badge ? parseInt(badge.textContent.trim(), 10) : 0;
           total += val > 0 ? val : 1;
         });
@@ -190,7 +217,11 @@ function checkAndSendDomUnread() {
   const count = detectUnreadCountFromDom();
   if (count !== lastReportedDomCount) {
     lastReportedDomCount = count;
-    ipcRenderer.sendToHost('webview:unread-count', { count });
+    const details =
+      count > 0
+        ? detectUnreadDetailsFromDom(document.title || '')
+        : { group: '', sender: '', body: '' };
+    ipcRenderer.sendToHost('webview:unread-count', { count, ...details });
   }
 }
 
@@ -557,9 +588,8 @@ const mainWorldScript = `
         true
       );
 
-      const blockWhenTabHidden = (e) => {
+      const pauseMediaWhenTabHidden = () => {
         if (window.__SOCIALHUB_TAB_HIDDEN__) {
-          e.stopImmediatePropagation();
           document.querySelectorAll('video, audio').forEach((m) => {
             try {
               m.pause();
@@ -567,8 +597,8 @@ const mainWorldScript = `
           });
         }
       };
-      document.addEventListener('visibilitychange', blockWhenTabHidden, true);
-      window.addEventListener('focus', blockWhenTabHidden, true);
+      document.addEventListener('visibilitychange', pauseMediaWhenTabHidden, true);
+      window.addEventListener('focus', pauseMediaWhenTabHidden, true);
     }
 
     // Support mouse back/forward buttons (button 3 / 4) and Alt+Left / Alt+Right navigation

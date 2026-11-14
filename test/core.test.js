@@ -43,6 +43,9 @@ test('parseUnreadCount extracts unread counts from Zalo, Messenger, and Telegram
   assert.equal(parseUnreadCount('(99+) Messenger'), 99);
   assert.equal(parseUnreadCount('Messenger (4)'), 4);
   assert.equal(parseUnreadCount('[5] Telegram Web'), 5);
+  assert.equal(parseUnreadCount('1 new message'), 1);
+  assert.equal(parseUnreadCount('3 unread messages'), 3);
+  assert.equal(parseUnreadCount('Telegram — 2 unread messages'), 2);
   assert.equal(parseUnreadCount('• Messenger'), 1);
   assert.equal(parseUnreadCount('Zalo - TOPV VP&HN nội bộ (159 thành viên)'), 0);
   assert.equal(parseUnreadCount('Zalo - Nguyễn Đình Thắng'), 0);

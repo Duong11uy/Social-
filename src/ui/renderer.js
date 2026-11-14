@@ -159,6 +159,7 @@ const els = {
 
 const lastNotifiedAt = {};
 const lastNotifiedText = {};
+const lastDomUnreadCounts = {};
 const pendingTitleNotifyTimers = {};
 const zeroUnreadResetTimers = {};
 let lastGlobalChimeAt = 0;
@@ -780,12 +781,29 @@ function ensureWebviewPane(service) {
     } else if (event.channel === 'webview:unread-count') {
       const payload = (event.args && event.args[0]) || {};
       const count = Number(payload.count) || 0;
+      lastDomUnreadCounts[service.id] = count;
+      if (payload.sender || payload.group) {
+        state.lastDomSenders[service.id] = {
+          sender: payload.sender || '',
+          group: payload.group || '',
+          body: payload.body || '',
+        };
+      }
       const isCurrentActiveTab =
         state.activeServiceId === service.id && !state.windowHidden && document.hasFocus();
       if (count > 0) {
         if (!isCurrentActiveTab) {
-          state.unreadCounts[service.id] = Math.max(state.unreadCounts[service.id] || 0, count);
-          updateBadgeCount(service.id, state.unreadCounts[service.id]);
+          const prevCount = state.unreadCounts[service.id] || 0;
+          const nextCount = Math.max(prevCount, count);
+          state.unreadCounts[service.id] = nextCount;
+          updateBadgeCount(service.id, nextCount);
+          if (window.chatHub.shouldTriggerUnreadNotification(prevCount, nextCount, state.dndMuted)) {
+            triggerServiceNotification(service, {
+              sender: payload.sender || '',
+              group: payload.group || '',
+              body: payload.body || '',
+            });
+          }
         }
       } else if (count === 0 && isCurrentActiveTab) {
         state.unreadCounts[service.id] = 0;
@@ -856,6 +874,7 @@ function updateBadgeCount(serviceId, count) {
 function destroyWebviewPane(serviceId) {
   delete state.unreadCounts[serviceId];
   delete state.lastDomSenders[serviceId];
+  delete lastDomUnreadCounts[serviceId];
   const pane = els.webviewStage.querySelector(`.webview-pane[data-service-id="${serviceId}"]`);
   if (pane) {
     const wv = pane.querySelector('webview');
@@ -963,10 +982,15 @@ function syncVisibleWebviews() {
 
 function switchService(serviceId) {
   if (!getEnabledServices().some((s) => s.id === serviceId)) return;
+  const prevServiceId = state.activeServiceId;
   if (state.splitMode && state.activeServiceId && state.activeServiceId !== serviceId && !state.splitSecondaryId) {
     state.splitSecondaryId = state.activeServiceId;
   }
   state.activeServiceId = serviceId;
+  if (prevServiceId && prevServiceId !== serviceId && (lastDomUnreadCounts[prevServiceId] || 0) > 0) {
+    state.unreadCounts[prevServiceId] = lastDomUnreadCounts[prevServiceId];
+    updateBadgeCount(prevServiceId, state.unreadCounts[prevServiceId]);
+  }
   state.unreadCounts[serviceId] = 0;
   updateBadgeCount(serviceId, 0);
   updateTitlebar();
@@ -1331,6 +1355,22 @@ async function initApp() {
   renderRailButtons();
   syncVisibleWebviews();
   renderPresets();
+
+  // Pre-mount enabled messaging tabs (Zalo, Messenger, Telegram) in background shortly after startup
+  // so they can receive incoming messages and fire desktop notifications before being clicked
+  setTimeout(() => {
+    const bgChatKeys = new Set(['zalo', 'messenger', 'telegram']);
+    const bgChats = getEnabledServices().filter(
+      (s) => bgChatKeys.has(s.iconKey) && s.id !== state.activeServiceId
+    );
+    bgChats.forEach((svc, idx) => {
+      setTimeout(() => {
+        if (!getEnabledServices().some((s) => s.id === svc.id)) return;
+        ensureWebviewPane(svc);
+        syncVisibleWebviews();
+      }, idx * 800);
+    });
+  }, 2200);
 
   // Window controls
   els.btnWinMin.addEventListener('click', () => window.chatHub.minimizeWindow());

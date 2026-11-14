@@ -123,6 +123,7 @@ test('renderer.js exists and includes service switching, lazy webview mounting, 
   assert.match(js, /applyBrightness/);
   assert.match(js, /toggleBrightnessPopover/);
   assert.match(js, /social_hub_brightness/);
+  assert.match(js, /lastDomUnreadCounts/);
   assert.doesNotMatch(js, /applyTheme/);
 });
 
@@ -180,6 +181,8 @@ test('Electron main.js, preload.js, and webview-preload.js include GPU accelerat
   assert.match(wvPreloadSrc, /ArrowDown/);
   assert.match(wvPreloadSrc, /comment\|reply\|chat/i);
   assert.match(wvPreloadSrc, /isContentEditable/);
+  assert.match(wvPreloadSrc, /getTelegramUnreadRows/);
+  assert.match(wvPreloadSrc, /\.Badge\.unread/);
 
   // Verify that mainWorldScript inside webview-preload.js has valid JS syntax without template-string comment bugs
   const scriptMatch = wvPreloadSrc.match(/const mainWorldScript = `([\s\S]*?)`;\s*try\s*\{\s*webFrame/);
